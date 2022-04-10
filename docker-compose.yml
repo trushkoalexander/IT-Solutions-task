@@ -1,0 +1,52 @@
+version: "3"
+
+volumes:
+    grafana_data: {}
+
+
+services:  
+ prometheus:
+      image: prom/prometheus
+      container_name: prometheus
+      ports:
+      - "9090:9090"
+      volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+
+ app:
+      container_name: app
+      build: ./my_flask_app/.
+      ports:
+      - "5000:5000"
+      volumes:
+      - "./my_flask_app/app.py:/app.py"
+
+ nodeexporter:
+      image: prom/node-exporter:v1.3.1
+      container_name: nodeexporter
+      volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+      restart: unless-stopped
+      ports:
+      - "9100:9100"
+  
+ grafana:
+    image: grafana/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    env_file:
+      - config 
+
